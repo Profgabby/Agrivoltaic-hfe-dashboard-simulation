@@ -1,5 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
+import { useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
