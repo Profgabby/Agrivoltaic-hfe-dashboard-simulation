@@ -36,3 +36,7 @@ The application currently reports, by Low/Medium/High load:
 - average response time.
 
 No inferential statistics or causal effect estimates are computed.
+
+## Verification boundary
+
+Repository build verification checks source quality and production compilation. A passing software build does not constitute psychometric validation, human-subject approval, field validation, or evidence of agrivoltaic treatment effects.
