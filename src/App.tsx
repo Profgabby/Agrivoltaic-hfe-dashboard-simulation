@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import * as XLSX from "xlsx";
 import {
 
@@ -19,75 +19,9 @@ import {
   YAxis,
 } from "recharts";
 
-type Status = "Normal" | "Watch" | "Warning" | "Critical";
-type LoadLevel = "Low" | "Medium" | "High";
-type Stage = "decision" | "feedback" | "tlx" | "sagat";
-
-type Metric = {
-  value: string;
-  status: Status;
-  meaning: string;
-};
-
-type Scenario = {
-  id: string;
-  loadLevel: LoadLevel;
-  principle: string;
-  title: string;
-  criticalSignal: string;
-  dashboard: Record<string, Metric>;
-  alerts: string[];
-  question: string;
-  options: { text: string; consequence: string }[];
-  correct: string;
-  recommendation: string;
-  sagatQuestion: string;
-  sagatOptions: string[];
-  sagatCorrect: string;
-  trendData: Array<{
-    time: string;
-    moisture: number;
-    temp: number;
-    solar: number;
-    battery: number;
-    stress: number;
-  }>;
-};
-
-type ResponseRow = {
-  participant: string;
-  scenarioId: string;
-  loadLevel: LoadLevel;
-  principle: string;
-  question: string;
-  selectedAnswer: string;
-  correctAnswer: string;
-  accuracy: "Correct" | "Incorrect";
-  responseTimeSeconds: string;
-  consequence: string;
-  recommendation: string;
-  timestamp: string;
-  tlxMental?: number;
-  tlxPhysical?: number;
-  tlxTemporal?: number;
-  tlxPerformance?: number;
-  tlxEffort?: number;
-  tlxFrustration?: number;
-  tlxScore?: number;
-  sagatQuestion?: string;
-  sagatSelected?: string;
-  sagatCorrectAnswer?: string;
-  sagatAccuracy?: "Correct" | "Incorrect";
-};
-
-type TlxState = {
-  Mental: number;
-  Physical: number;
-  Temporal: number;
-  Performance: number;
-  Effort: number;
-  Frustration: number;
-};
+import type { LoadLevel, ResponseRow, Scenario, Stage, Status, TlxState } from "./research/types";
+import { scenarios } from "./data/scenarios";
+import { computeWorkloadComposite, summarizeByLoad } from "./research/measures";
 
 const COLORS = {
   green: "#1B5E20",
@@ -98,280 +32,6 @@ const COLORS = {
   purple: "#6A1B9A",
   slate: "#0F172A",
 };
-
-const trend = (
-  moisture: number[],
-  temp: number[],
-  solar: number[],
-  battery: number[],
-  stress: number[]
-) =>
-  ["08:00", "09:00", "10:00", "11:00", "12:00"].map((time, i) => ({
-    time,
-    moisture: moisture[i],
-    temp: temp[i],
-    solar: solar[i],
-    battery: battery[i],
-    stress: stress[i],
-  }));
-
-const scenarios: Scenario[] = [
-  {
-    id: "L1",
-    loadLevel: "Low",
-    principle: "Salience + Proximity",
-    title: "Low Load 1: Water Status Dashboard",
-    criticalSignal: "Soil moisture is falling below the safe crop threshold.",
-    dashboard: {
-      "Soil Moisture": { value: "28%", status: "Warning", meaning: "Crop water is becoming low" },
-      "Air Temperature": { value: "29°C", status: "Normal", meaning: "Acceptable field temperature" },
-      "Solar Output": { value: "80%", status: "Normal", meaning: "Energy production is stable" },
-      Humidity: { value: "55%", status: "Normal", meaning: "No humidity problem" },
-    },
-    alerts: ["Moderate irrigation demand"],
-    question: "Crop moisture is gradually declining while all other systems remain stable. Which action is most appropriate?",
-    options: [
-      { text: "Increase irrigation moderately", consequence: "Correct. This responds directly to the moisture warning." },
-      { text: "Shut down energy monitoring", consequence: "Incorrect. The solar system is stable and does not require shutdown." },
-      { text: "Replace environmental sensors", consequence: "Incorrect. The dashboard does not indicate sensor failure." },
-      { text: "Reduce crop shading", consequence: "Incorrect. The problem is water deficit, not excess shade." },
-    ],
-    correct: "Increase irrigation moderately",
-    recommendation: "Increase irrigation moderately and recheck soil moisture after the next irrigation cycle.",
-    sagatQuestion: "Which variable was the main warning signal?",
-    sagatOptions: ["Soil Moisture", "Solar Output", "Humidity", "Air Temperature"],
-    sagatCorrect: "Soil Moisture",
-    trendData: trend([39, 35, 32, 30, 28], [27, 27, 28, 29, 29], [74, 77, 80, 82, 80], [80, 78, 78, 77, 76], [20, 24, 29, 35, 42]),
-  },
-  {
-    id: "L2",
-    loadLevel: "Low",
-    principle: "Expectations + Accessible Language",
-    title: "Low Load 2: Water Tank Dashboard",
-    criticalSignal: "Water reserve is declining before crop stress becomes visible.",
-    dashboard: {
-      "Crop Temperature": { value: "27°C", status: "Normal", meaning: "Crop heat is acceptable" },
-      "Water Tank": { value: "48%", status: "Warning", meaning: "Water reserve is below preferred level" },
-      "Solar Output": { value: "85%", status: "Normal", meaning: "Solar system is performing well" },
-      "Wind Speed": { value: "Low", status: "Normal", meaning: "No wind-related risk" },
-    },
-    alerts: ["Water reserve declining"],
-    question: "Water storage levels are falling but crop conditions remain stable. What should the operator monitor next?",
-    options: [
-      { text: "Irrigation supply system", consequence: "Correct. A falling tank level requires checking irrigation supply before crops suffer." },
-      { text: "Crop harvest schedule", consequence: "Incorrect. Harvest timing is not the immediate issue." },
-      { text: "Solar panel angle", consequence: "Incorrect. Solar output is stable." },
-      { text: "Wind direction", consequence: "Incorrect. Wind is low and not the current risk." },
-    ],
-    correct: "Irrigation supply system",
-    recommendation: "Check the irrigation supply line, pump status, and tank refill schedule before the next watering period.",
-    sagatQuestion: "Which subsystem should be checked next?",
-    sagatOptions: ["Irrigation supply", "Solar angle", "Wind direction", "Harvest timing"],
-    sagatCorrect: "Irrigation supply",
-    trendData: trend([42, 39, 36, 33, 31], [26, 26, 27, 27, 27], [80, 82, 84, 86, 85], [85, 80, 73, 60, 48], [18, 20, 22, 25, 29]),
-  },
-  {
-    id: "L3",
-    loadLevel: "Low",
-    principle: "Interface Signal + Expectations",
-    title: "Low Load 3: Stable Energy Dashboard",
-    criticalSignal: "Energy is stable, but irrigation timing still needs routine attention.",
-    dashboard: {
-      "Soil Moisture": { value: "31%", status: "Watch", meaning: "Acceptable but trending down" },
-      "Solar Output": { value: "88%", status: "Normal", meaning: "Strong energy production" },
-      "Battery Level": { value: "78%", status: "Normal", meaning: "Backup power is available" },
-      "Irrigation Timer": { value: "Due in 30 min", status: "Watch", meaning: "Routine irrigation is approaching" },
-    },
-    alerts: ["Irrigation cycle due soon"],
-    question: "The dashboard shows stable solar energy but the irrigation cycle is due soon. What should the farmer do next?",
-    options: [
-      { text: "Prepare the irrigation cycle", consequence: "Correct. The main expected action is to prepare irrigation at the scheduled time." },
-      { text: "Turn off the battery", consequence: "Incorrect. Battery level is normal and useful for backup." },
-      { text: "Ignore irrigation because solar is strong", consequence: "Incorrect. Solar performance does not replace crop water needs." },
-      { text: "Harvest immediately", consequence: "Incorrect. Nothing indicates urgent harvest need." },
-    ],
-    correct: "Prepare the irrigation cycle",
-    recommendation: "Prepare irrigation valves, confirm water availability, and begin the scheduled irrigation cycle if field moisture continues downward.",
-    sagatQuestion: "What event is expected soon?",
-    sagatOptions: ["Irrigation cycle", "Battery shutdown", "Solar failure", "Emergency harvest"],
-    sagatCorrect: "Irrigation cycle",
-    trendData: trend([40, 38, 35, 33, 31], [25, 26, 26, 27, 27], [78, 82, 86, 88, 88], [74, 75, 77, 78, 78], [16, 18, 21, 24, 28]),
-  },
-  {
-    id: "M1",
-    loadLevel: "Medium",
-    principle: "Redundancy + Interface Signal",
-    title: "Medium Load 1: Crop Stress Dashboard",
-    criticalSignal: "Low soil moisture and high temperature are combining to increase crop stress.",
-    dashboard: {
-      "Soil Moisture": { value: "18%", status: "Critical", meaning: "Crop water deficit is high" },
-      "Air Temperature": { value: "35°C", status: "Warning", meaning: "Heat stress risk is increasing" },
-      Humidity: { value: "65%", status: "Normal", meaning: "Humidity is acceptable" },
-      "Solar Output": { value: "72%", status: "Normal", meaning: "Energy is usable" },
-      "Battery Level": { value: "48%", status: "Watch", meaning: "Battery is lower but not urgent" },
-    },
-    alerts: ["Irrigation needed", "High crop temperature"],
-    question: "Both crop temperature and soil moisture are reaching critical thresholds. Which issue should be addressed first?",
-    options: [
-      { text: "Soil moisture depletion", consequence: "Correct. Water deficit is the direct cause that can worsen heat stress." },
-      { text: "Battery recharge cycle", consequence: "Incorrect. Battery is not the immediate crop-risk driver." },
-      { text: "Solar energy efficiency", consequence: "Incorrect. Energy performance is not the most urgent crop threat." },
-      { text: "Humidity adjustment", consequence: "Incorrect. Humidity is within the acceptable range." },
-    ],
-    correct: "Soil moisture depletion",
-    recommendation: "Prioritize irrigation, then continue monitoring temperature and crop stress after water delivery improves.",
-    sagatQuestion: "Which two conditions are combining to create crop stress?",
-    sagatOptions: ["Low moisture + high temperature", "High battery + low wind", "High humidity + solar gain", "Sensor delay + high wind"],
-    sagatCorrect: "Low moisture + high temperature",
-    trendData: trend([31, 27, 23, 20, 18], [29, 31, 33, 34, 35], [80, 78, 76, 74, 72], [70, 65, 58, 52, 48], [35, 44, 55, 66, 76]),
-  },
-  {
-    id: "M2",
-    loadLevel: "Medium",
-    principle: "Discriminability + Salience",
-    title: "Medium Load 2: Irrigation Pressure Dashboard",
-    criticalSignal: "Irrigation pressure is unstable while crop stress is rising.",
-    dashboard: {
-      "Irrigation Pressure": { value: "Low", status: "Critical", meaning: "Water delivery may fail" },
-      "Crop Stress Index": { value: "High", status: "Critical", meaning: "Plants are under stress" },
-      "Solar Efficiency": { value: "70%", status: "Normal", meaning: "PV system is acceptable" },
-      "Wind Speed": { value: "Moderate", status: "Normal", meaning: "No immediate wind hazard" },
-      "Battery Level": { value: "44%", status: "Watch", meaning: "Monitor later" },
-    },
-    alerts: ["Crop stress increasing", "Irrigation pressure unstable"],
-    question: "The system reports unstable irrigation pressure alongside increasing crop stress. Which action is the best operational response?",
-    options: [
-      { text: "Inspect irrigation system immediately", consequence: "Correct. Low pressure may prevent water from reaching crops." },
-      { text: "Reorient solar panels", consequence: "Incorrect. The current issue is water delivery, not solar orientation." },
-      { text: "Export historical data", consequence: "Incorrect. Reporting can wait until the urgent risk is controlled." },
-      { text: "Reduce battery usage", consequence: "Incorrect. Battery status is secondary in this scenario." },
-    ],
-    correct: "Inspect irrigation system immediately",
-    recommendation: "Inspect pump, valves, filters, and pipe leakage immediately; confirm pressure recovery before leaving the field.",
-    sagatQuestion: "Which subsystem is unstable?",
-    sagatOptions: ["Irrigation pressure", "Solar efficiency", "Wind speed", "Battery level"],
-    sagatCorrect: "Irrigation pressure",
-    trendData: trend([34, 30, 25, 22, 19], [28, 30, 32, 34, 36], [78, 76, 73, 71, 70], [64, 59, 54, 49, 44], [32, 43, 55, 68, 80]),
-  },
-  {
-    id: "M3",
-    loadLevel: "Medium",
-    principle: "Proximity + Action Guidance",
-    title: "Medium Load 3: Shade and Water Balance Dashboard",
-    criticalSignal: "Crop stress is rising because shade is acceptable but water delivery is delayed.",
-    dashboard: {
-      "Shade Level": { value: "Optimal", status: "Normal", meaning: "Panel shade is helping crop comfort" },
-      "Soil Moisture": { value: "20%", status: "Critical", meaning: "Water is too low" },
-      "Irrigation Delay": { value: "45 min", status: "Warning", meaning: "Water delivery is late" },
-      "Solar Output": { value: "76%", status: "Normal", meaning: "Energy is acceptable" },
-      "Crop Stress": { value: "Rising", status: "Critical", meaning: "Plant risk is increasing" },
-    },
-    alerts: ["Irrigation delayed", "Crop stress rising"],
-    question: "Shade is optimal, but soil moisture is low and irrigation is delayed. What is the best next step?",
-    options: [
-      { text: "Start backup irrigation", consequence: "Correct. The crop stress is tied to delayed water delivery." },
-      { text: "Reduce shade immediately", consequence: "Incorrect. Shade is optimal and is not the cause of the stress." },
-      { text: "Optimize solar output first", consequence: "Incorrect. Energy is acceptable; crop water is urgent." },
-      { text: "Wait until tomorrow", consequence: "Incorrect. Crop stress is already rising." },
-    ],
-    correct: "Start backup irrigation",
-    recommendation: "Use backup irrigation or manual watering support until the automated irrigation delay is resolved.",
-    sagatQuestion: "Is shade the main problem in this scenario?",
-    sagatOptions: ["No, water delivery is the issue", "Yes, shade is too high", "Yes, shade is too low", "No, battery is the only issue"],
-    sagatCorrect: "No, water delivery is the issue",
-    trendData: trend([35, 31, 27, 23, 20], [28, 29, 31, 32, 33], [82, 80, 78, 76, 76], [66, 61, 58, 54, 50], [30, 40, 52, 65, 78]),
-  },
-  {
-    id: "H1",
-    loadLevel: "High",
-    principle: "Cognitive Load Control + Priority Coding",
-    title: "High Load 1: Emergency Prioritization Dashboard",
-    criticalSignal: "The most immediate risk is irrigation failure under heat stress conditions.",
-    dashboard: {
-      "Soil Moisture": { value: "14%", status: "Critical", meaning: "Severe water deficit" },
-      "Crop Temperature": { value: "38°C", status: "Critical", meaning: "Heat stress is likely" },
-      Humidity: { value: "72%", status: "Watch", meaning: "May worsen discomfort" },
-      "Battery Level": { value: "32%", status: "Warning", meaning: "Energy backup is low" },
-      "Wind Speed": { value: "High", status: "Watch", meaning: "Monitor structure safety" },
-      "Sensor Delay": { value: "Detected", status: "Warning", meaning: "Data may be delayed" },
-      "Solar Output": { value: "65%", status: "Normal", meaning: "Reduced but usable" },
-    },
-    alerts: ["CRITICAL IRRIGATION FAILURE", "HEAT STRESS WARNING", "BATTERY LOW", "SENSOR DELAY"],
-    question: "Multiple systems are reporting simultaneous failures. Which issue presents the highest immediate operational risk?",
-    options: [
-      { text: "Irrigation failure", consequence: "Correct. Water failure during heat stress can rapidly damage crops." },
-      { text: "Wind speed increase", consequence: "Incorrect. It is important, but less immediate than irrigation failure here." },
-      { text: "Battery storage level", consequence: "Incorrect. Battery is low, but crop survival depends first on irrigation." },
-      { text: "Sensor communication delay", consequence: "Incorrect. Data delay matters, but the visible operational risk is irrigation failure." },
-    ],
-    correct: "Irrigation failure",
-    recommendation: "Activate emergency irrigation response, verify pump power, and assign a technician to inspect water delivery immediately.",
-    sagatQuestion: "Which alert should receive highest priority?",
-    sagatOptions: ["Critical irrigation failure", "Sensor delay", "Battery low", "High wind"],
-    sagatCorrect: "Critical irrigation failure",
-    trendData: trend([28, 23, 19, 16, 14], [31, 34, 36, 37, 38], [75, 72, 69, 66, 65], [58, 51, 43, 36, 32], [46, 58, 70, 82, 90]),
-  },
-  {
-    id: "H2",
-    loadLevel: "High",
-    principle: "Redundancy + Expectations + Action Guidance",
-    title: "High Load 2: Crisis Decision Dashboard",
-    criticalSignal: "Severe crop stress is linked to critical irrigation flow instability.",
-    dashboard: {
-      "Soil Moisture": { value: "12%", status: "Critical", meaning: "Extremely low water availability" },
-      "Crop Temperature": { value: "40°C", status: "Critical", meaning: "Severe heat stress" },
-      "Battery Level": { value: "28%", status: "Warning", meaning: "Power reserve declining" },
-      "Irrigation Flow": { value: "Critical", status: "Critical", meaning: "Water delivery failure likely" },
-      "Solar Efficiency": { value: "62%", status: "Watch", meaning: "Reduced PV performance" },
-      Humidity: { value: "75%", status: "Watch", meaning: "High moisture in air" },
-      "Sensor Accuracy": { value: "Low", status: "Warning", meaning: "Confirm with field inspection" },
-    },
-    alerts: ["MULTI-SYSTEM FAILURE", "SEVERE CROP STRESS", "ENERGY INSTABILITY", "LOW SENSOR ACCURACY"],
-    question: "The dashboard displays severe crop stress, irrigation instability, and declining battery performance simultaneously. Which response should be prioritized first?",
-    options: [
-      { text: "Stabilize irrigation delivery", consequence: "Correct. This directly addresses the crop survival risk." },
-      { text: "Optimize photovoltaic angle", consequence: "Incorrect. PV optimization does not solve the immediate crop stress." },
-      { text: "Export monitoring reports", consequence: "Incorrect. Reporting should follow emergency response." },
-      { text: "Reduce environmental sampling", consequence: "Incorrect. The priority is stabilizing water delivery." },
-    ],
-    correct: "Stabilize irrigation delivery",
-    recommendation: "Stabilize irrigation delivery first, then verify data accuracy through field inspection and review battery backup after crop risk is controlled.",
-    sagatQuestion: "What should happen after irrigation is stabilized?",
-    sagatOptions: ["Verify sensor data and review battery backup", "Export reports immediately", "Ignore the field", "Reduce all monitoring"],
-    sagatCorrect: "Verify sensor data and review battery backup",
-    trendData: trend([25, 20, 17, 14, 12], [33, 35, 37, 39, 40], [70, 68, 65, 63, 62], [50, 43, 37, 31, 28], [55, 68, 80, 88, 94]),
-  },
-  {
-    id: "H3",
-    loadLevel: "High",
-    principle: "Discriminability + Redundancy + Emergency Hierarchy",
-    title: "High Load 3: Multi-Alert Control Dashboard",
-    criticalSignal: "Several alerts are active, but only one directly threatens crop survival within the next hour.",
-    dashboard: {
-      "Soil Moisture": { value: "10%", status: "Critical", meaning: "Extreme drought stress" },
-      "Pump Status": { value: "Offline", status: "Critical", meaning: "No water delivery" },
-      "Panel Temperature": { value: "High", status: "Warning", meaning: "PV system needs later review" },
-      "Battery Backup": { value: "35%", status: "Warning", meaning: "Limited reserve" },
-      "Network Signal": { value: "Weak", status: "Watch", meaning: "Dashboard may update slowly" },
-      "Crop Stress": { value: "Severe", status: "Critical", meaning: "Immediate crop damage risk" },
-      "Wind Alert": { value: "Moderate", status: "Watch", meaning: "Monitor structure" },
-    },
-    alerts: ["PUMP OFFLINE", "EXTREME SOIL WATER DEFICIT", "SEVERE CROP STRESS", "WEAK NETWORK SIGNAL"],
-    question: "The pump is offline, soil moisture is extremely low, and crop stress is severe. What should be done first?",
-    options: [
-      { text: "Restore pump or activate backup water delivery", consequence: "Correct. Restoring water delivery addresses the immediate crop survival threat." },
-      { text: "Troubleshoot network signal first", consequence: "Incorrect. Weak network is secondary when crop survival is at risk." },
-      { text: "Cool the PV panels first", consequence: "Incorrect. Panel temperature should be monitored, but water delivery is more urgent." },
-      { text: "Wait for the next dashboard update", consequence: "Incorrect. Waiting increases the risk of crop loss." },
-    ],
-    correct: "Restore pump or activate backup water delivery",
-    recommendation: "Restore pump operation immediately; if not possible, activate backup water delivery and send a field worker to confirm crop condition.",
-    sagatQuestion: "Which secondary issue should NOT distract from crop survival?",
-    sagatOptions: ["Weak network signal", "Pump offline", "Extreme soil water deficit", "Severe crop stress"],
-    sagatCorrect: "Weak network signal",
-    trendData: trend([22, 18, 15, 12, 10], [34, 36, 38, 39, 40], [74, 70, 66, 63, 60], [56, 50, 44, 39, 35], [60, 72, 84, 92, 98]),
-  },
-];
 
 const statusDot: Record<Status, string> = {
   Normal: "bg-emerald-500",
@@ -387,12 +47,67 @@ const statusPanel: Record<Status, string> = {
   Critical: "border-red-300 bg-red-50 text-red-950",
 };
 
+const KpiCard = ({ label, value, detail, accent }: { label: string; value: string; detail: string; accent: string }) => (
+  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="flex items-center justify-between">
+      <p className="text-sm font-semibold text-slate-500">{label}</p>
+      <span className="h-3 w-3 rounded-full" style={{ background: accent }} />
+    </div>
+    <p className="mt-2 text-3xl font-black text-slate-950">{value}</p>
+    <p className="mt-1 text-sm text-slate-500">{detail}</p>
+  </div>
+);
+
+const Slider = ({ label, value, onChange, low = "Low", high = "High" }: { label: string; value: number; onChange: (v: number) => void; low?: string; high?: string }) => (
+  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mb-2 flex justify-between font-bold text-slate-800"><span>{label}</span><span>{value}</span></div>
+    <input className="w-full accent-green-700" type="range" min="1" max="10" value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    <div className="mt-1 flex justify-between text-xs text-slate-500"><span>{low}</span><span>{high}</span></div>
+  </div>
+);
+
+const TrendChart = ({ data }: { data: Scenario["trendData"] }) => (
+  <div className="h-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mb-3 flex items-center justify-between">
+      <div>
+        <h3 className="font-black text-slate-900">Live System Trends</h3>
+        <p className="text-xs text-slate-500">Moisture, crop heat, solar energy, and stress over time</p>
+      </div>
+      <div className="hidden gap-3 text-xs font-semibold text-slate-600 md:flex">
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-700" />Moisture</span>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-700" />Temp</span>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-700" />Solar</span>
+      </div>
+    </div>
+    <ResponsiveContainer width="100%" height="82%">
+      <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+        <XAxis dataKey="time" tick={{ fontSize: 12 }} />
+        <YAxis tick={{ fontSize: 12 }} />
+        <Tooltip />
+        <Line type="monotone" dataKey="moisture" name="Soil moisture" stroke={COLORS.green2} strokeWidth={3} dot={false} />
+        <Line type="monotone" dataKey="temp" name="Crop temperature" stroke={COLORS.red} strokeWidth={3} dot={false} />
+        <Line type="monotone" dataKey="solar" name="Solar output" stroke={COLORS.blue} strokeWidth={3} dot={false} />
+        <Line type="monotone" dataKey="stress" name="Crop stress" stroke={COLORS.purple} strokeWidth={3} dot={false} />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+);
+
+const MiniGauge = ({ label, value, color }: { label: string; value: number; color: string }) => (
+  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mb-2 flex items-center justify-between"><span className="text-sm font-bold text-slate-700">{label}</span><span className="text-sm font-black">{value}%</span></div>
+    <div className="h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${value}%`, background: color }} /></div>
+  </div>
+);
+
+
 export default function AgrivoltaicHFESimulationProfessional() {
-  const participantId = useMemo(() => `P-${Math.floor(Math.random() * 9000 + 1000)}`, []);
+  const [participantId, setParticipantId] = useState("P-pending");
   const [started, setStarted] = useState(false);
   const [current, setCurrent] = useState(0);
   const [stage, setStage] = useState<Stage>("decision");
-  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const [questionStartTime, setQuestionStartTime] = useState(0);
   const [responses, setResponses] = useState<ResponseRow[]>([]);
   const [feedback, setFeedback] = useState<ResponseRow | null>(null);
   const [tlx, setTlx] = useState<TlxState>({ Mental: 5, Physical: 1, Temporal: 5, Performance: 5, Effort: 5, Frustration: 5 });
@@ -400,19 +115,15 @@ export default function AgrivoltaicHFESimulationProfessional() {
   const [showResults, setShowResults] = useState(false);
   const [csvText, setCsvText] = useState("");
 
-  useEffect(() => {
-    if (started && stage === "decision") setQuestionStartTime(Date.now());
-  }, [started, current, stage]);
-
   const scenario = scenarios[current];
 
-  const getTlxScore = (v = tlx) =>
-    Math.round((Number(v.Mental) + Number(v.Physical) + Number(v.Temporal) + (11 - Number(v.Performance)) + Number(v.Effort) + Number(v.Frustration)) / 6);
+  const getTlxScore = (v = tlx) => computeWorkloadComposite(v);
 
   const handleAnswer = (answer: string) => {
     const selected = scenario.options.find((o) => o.text === answer);
     const isCorrect = answer === scenario.correct;
-    const rt = ((Date.now() - questionStartTime) / 1000).toFixed(2);
+    const answeredAt = new Event("hfe-response").timeStamp;
+    const rt = ((answeredAt - questionStartTime) / 1000).toFixed(2);
 
     setFeedback({
       participant: participantId,
@@ -459,32 +170,18 @@ export default function AgrivoltaicHFESimulationProfessional() {
     if (current + 1 < scenarios.length) {
       setCurrent(current + 1);
       setStage("decision");
+      setQuestionStartTime(new Event("hfe-decision-start").timeStamp);
     } else {
       setShowResults(true);
     }
   };
 
-  const summaryByLoad = (load: LoadLevel) => {
-    const rows = responses.filter((r) => r.loadLevel === load);
-    const correct = rows.filter((r) => r.accuracy === "Correct").length;
-    const sagat = rows.filter((r) => r.sagatAccuracy === "Correct").length;
-    const avgTlx = rows.length ? rows.reduce((s, r) => s + Number(r.tlxScore || 0), 0) / rows.length : 0;
-    const avgRt = rows.length ? rows.reduce((s, r) => s + Number(r.responseTimeSeconds), 0) / rows.length : 0;
-
-    return {
-      load,
-      trials: rows.length,
-      decisionPct: rows.length ? Math.round((correct / rows.length) * 100) : 0,
-      sagatPct: rows.length ? Math.round((sagat / rows.length) * 100) : 0,
-      avgTlx: Number(avgTlx.toFixed(1)),
-      avgRt: Number(avgRt.toFixed(2)),
-    };
-  };
+  const summaryByLoad = (load: LoadLevel) => summarizeByLoad(responses, load);
 
   const summaryData = [summaryByLoad("Low"), summaryByLoad("Medium"), summaryByLoad("High")];
 
   const buildCSV = (rows = responses) => {
-    const headers = ["Participant", "Scenario", "Load", "Principle", "Decision Accuracy", "Response Time Seconds", "Selected Answer", "Correct Answer", "NASA TLX Score", "SAGAT Accuracy", "SAGAT Selected", "SAGAT Correct", "Recommendation", "Timestamp"];
+    const headers = ["Participant", "Scenario", "Load", "Principle", "Decision Accuracy", "Response Time Seconds", "Selected Answer", "Correct Answer", "Prototype Workload Score", "SA Probe Accuracy", "SA Probe Selected", "SA Probe Correct", "Recommendation", "Timestamp"];
     const dataRows = rows.map((r) => [r.participant, r.scenarioId, r.loadLevel, r.principle, r.accuracy, r.responseTimeSeconds, r.selectedAnswer, r.correctAnswer, r.tlxScore, r.sagatAccuracy, r.sagatSelected, r.sagatCorrectAnswer, r.recommendation, r.timestamp]);
     return [headers, ...dataRows].map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   };
@@ -542,61 +239,9 @@ export default function AgrivoltaicHFESimulationProfessional() {
     setSagatSelection("");
     setCsvText("");
     setShowResults(false);
+    setParticipantId("P-pending");
+    setQuestionStartTime(0);
   };
-
-  const KpiCard = ({ label, value, detail, accent }: { label: string; value: string; detail: string; accent: string }) => (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-500">{label}</p>
-        <span className="h-3 w-3 rounded-full" style={{ background: accent }} />
-      </div>
-      <p className="mt-2 text-3xl font-black text-slate-950">{value}</p>
-      <p className="mt-1 text-sm text-slate-500">{detail}</p>
-    </div>
-  );
-
-  const Slider = ({ label, value, onChange, low = "Low", high = "High" }: { label: string; value: number; onChange: (v: number) => void; low?: string; high?: string }) => (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-2 flex justify-between font-bold text-slate-800"><span>{label}</span><span>{value}</span></div>
-      <input className="w-full accent-green-700" type="range" min="1" max="10" value={value} onChange={(e) => onChange(Number(e.target.value))} />
-      <div className="mt-1 flex justify-between text-xs text-slate-500"><span>{low}</span><span>{high}</span></div>
-    </div>
-  );
-
-  const TrendChart = ({ data }: { data: Scenario["trendData"] }) => (
-    <div className="h-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h3 className="font-black text-slate-900">Live System Trends</h3>
-          <p className="text-xs text-slate-500">Moisture, crop heat, solar energy, and stress over time</p>
-        </div>
-        <div className="hidden gap-3 text-xs font-semibold text-slate-600 md:flex">
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-700" />Moisture</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-700" />Temp</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-700" />Solar</span>
-        </div>
-      </div>
-      <ResponsiveContainer width="100%" height="82%">
-        <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-          <XAxis dataKey="time" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
-          <Line type="monotone" dataKey="moisture" name="Soil moisture" stroke={COLORS.green2} strokeWidth={3} dot={false} />
-          <Line type="monotone" dataKey="temp" name="Crop temperature" stroke={COLORS.red} strokeWidth={3} dot={false} />
-          <Line type="monotone" dataKey="solar" name="Solar output" stroke={COLORS.blue} strokeWidth={3} dot={false} />
-          <Line type="monotone" dataKey="stress" name="Crop stress" stroke={COLORS.purple} strokeWidth={3} dot={false} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-
-  const MiniGauge = ({ label, value, color }: { label: string; value: number; color: string }) => (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-2 flex items-center justify-between"><span className="text-sm font-bold text-slate-700">{label}</span><span className="text-sm font-black">{value}%</span></div>
-      <div className="h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${value}%`, background: color }} /></div>
-    </div>
-  );
 
   if (!started) {
     return (
@@ -607,7 +252,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
               <div>
                 <p className="mb-3 text-sm font-bold uppercase tracking-[0.3em] text-green-300">Agrivoltaic HFE Lab</p>
                 <h1 className="max-w-4xl text-4xl font-black leading-tight md:text-6xl">Professional Dashboard Simulation for Smart Agrivoltaic Decision Support</h1>
-                <p className="mt-5 max-w-3xl text-lg text-slate-300">A research-grade interface prototype that measures decision accuracy, NASA-TLX workload, SAGAT situational awareness, and response time under low, medium, and high dashboard complexity.</p>
+                <p className="mt-5 max-w-3xl text-lg text-slate-300">A research-grade interface prototype that measures decision accuracy, prototype workload, SAGAT situational awareness, and response time under low, medium, and high dashboard complexity.</p>
               </div>
               <div className="rounded-3xl border border-green-400/30 bg-green-400/10 p-6 text-center">
                 <p className="text-sm text-green-200">Participant</p>
@@ -618,7 +263,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
 
           <div className="grid gap-5 md:grid-cols-3">
             <KpiCard label="Experimental Variable" value="3 Loads" detail="Low, Medium, High dashboard complexity" accent={COLORS.green} />
-            <KpiCard label="Human Factors Measures" value="4 Metrics" detail="Accuracy, TLX, SAGAT, response time" accent={COLORS.blue} />
+            <KpiCard label="Human Factors Measures" value="4 Metrics" detail="Accuracy, workload, SA probes, response time" accent={COLORS.blue} />
             <KpiCard label="Export Format" value="XLSX" detail="Raw data and summary statistics" accent={COLORS.purple} />
           </div>
 
@@ -637,7 +282,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
             </div>
           </div>
 
-          <button onClick={() => setStarted(true)} className="mt-8 rounded-2xl bg-green-800 px-8 py-4 text-xl font-black text-white shadow-xl transition hover:bg-green-900">Start Simulation</button>
+          <button onClick={() => { setParticipantId(`P-${Math.floor(Math.random() * 9000 + 1000)}`); setQuestionStartTime(new Event("hfe-decision-start").timeStamp); setStarted(true); }} className="mt-8 rounded-2xl bg-green-800 px-8 py-4 text-xl font-black text-white shadow-xl transition hover:bg-green-900">Start Simulation</button>
         </div>
       </div>
     );
@@ -665,14 +310,14 @@ export default function AgrivoltaicHFESimulationProfessional() {
 
           <div className="grid gap-5 md:grid-cols-4">
             <KpiCard label="Decision Accuracy" value={`${Math.round((totalCorrect / responses.length) * 100)}%`} detail={`${totalCorrect}/${responses.length} correct`} accent={COLORS.green2} />
-            <KpiCard label="SAGAT Accuracy" value={`${Math.round((totalSagat / responses.length) * 100)}%`} detail="Situational awareness score" accent={COLORS.blue} />
-            <KpiCard label="Average TLX" value={`${avgTlx}/10`} detail="Perceived workload" accent={COLORS.orange} />
+            <KpiCard label="SA Probe Accuracy" value={`${Math.round((totalSagat / responses.length) * 100)}%`} detail="Situational awareness score" accent={COLORS.blue} />
+            <KpiCard label="Average workload" value={`${avgTlx}/10`} detail="Perceived workload" accent={COLORS.orange} />
             <KpiCard label="Avg Response Time" value={`${avgRt}s`} detail="Decision speed" accent={COLORS.purple} />
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-3">
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
-              <h2 className="mb-4 text-2xl font-black text-slate-950">Decision Accuracy and SAGAT by Load</h2>
+              <h2 className="mb-4 text-2xl font-black text-slate-950">Decision Accuracy and SA Probe Accuracy by Load</h2>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={summaryData}>
@@ -681,7 +326,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
                     <YAxis domain={[0, 100]} />
                     <Tooltip />
                     <Bar dataKey="decisionPct" name="Decision accuracy %" fill={COLORS.green2} radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="sagatPct" name="SAGAT accuracy %" fill={COLORS.blue} radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="sagatPct" name="SA probe accuracy %" fill={COLORS.blue} radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -710,7 +355,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
                   <XAxis dataKey="load" />
                   <YAxis />
                   <Tooltip />
-                  <Area type="monotone" dataKey="avgTlx" name="Average TLX" stroke={COLORS.orange} fill="#FFE0B2" strokeWidth={3} />
+                  <Area type="monotone" dataKey="avgTlx" name="Average workload" stroke={COLORS.orange} fill="#FFE0B2" strokeWidth={3} />
                   <Area type="monotone" dataKey="avgRt" name="Average response time" stroke={COLORS.purple} fill="#E1BEE7" strokeWidth={3} />
                 </AreaChart>
               </ResponsiveContainer>

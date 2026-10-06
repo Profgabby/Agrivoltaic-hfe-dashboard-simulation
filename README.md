@@ -1,73 +1,115 @@
-# React + TypeScript + Vite
+# Agrivoltaic HFE Dashboard Simulation
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Human-factors research prototype for decision support in coupled agrivoltaic crop–water–energy systems**
 
-Currently, two official plugins are available:
+This repository contains an interactive research prototype for studying how dashboard information load and interface design affect human decision performance in simulated agrivoltaic operating scenarios.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Research question
 
-## React Compiler
+How do changes in dashboard information load and interface presentation affect decision accuracy, response time, perceived workload, and scenario-based situational-awareness performance when users interpret coupled crop, water, and energy conditions?
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Current experimental structure
 
-## Expanding the ESLint configuration
+The prototype contains nine designed scenarios presented across three information-load conditions:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Condition | Scenarios | Interface/HFE concepts represented |
+| --- | --- | --- |
+| Low | L1–L3 | salience, proximity, expectations, accessible language, interface signals |
+| Medium | M1–M3 | redundancy, discriminability, salience, proximity, action guidance |
+| High | H1–H3 | cognitive-load control, priority coding, redundancy, expectations, action guidance, emergency hierarchy |
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Each trial currently follows this sequence:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+`scenario dashboard → decision → consequence/feedback → workload ratings → situational-awareness probe → next trial`
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+The current prototype records decision accuracy and response time, six subjective workload dimensions, and accuracy on a scenario-based situational-awareness probe. It can export participant-level records and load-level summaries to XLSX and CSV.
+
+## Evidence status and provenance
+
+All agrivoltaic dashboard values currently used by the application are **designed experimental stimuli** encoded in the source. They are not presented as measured field observations.
+
+Current scenario values may include soil moisture, temperature, solar output, battery state, irrigation conditions, water storage, crop stress, shade, alerts, and short trend sequences. The scenario answer keys and recommendations are also authored experimental content.
+
+The repository currently does **not** establish:
+- live sensor ingestion or physical field deployment;
+- measured agrivoltaic field observations;
+- validated crop, hydrologic, photovoltaic, or FEW-system simulation;
+- autonomous operational control;
+- field-validated irrigation or agronomic prescriptions; or
+- experimentally demonstrated improvements in decision performance.
+
+## Human-factors measures
+
+### Decision accuracy
+Implemented as agreement between the participant's selected response and the scenario's predefined answer key.
+
+### Response time
+Implemented as elapsed browser time between presentation of a decision stage and answer submission.
+
+### Subjective workload
+The interface currently collects six 1–10 ratings labelled Mental, Physical, Temporal, Performance, Effort, and Frustration and computes an unweighted composite score. These dimensions are **NASA-TLX-inspired**, but the current implementation is not represented as the complete standard NASA-TLX protocol.
+
+### Situational awareness
+Each scenario includes a post-decision knowledge probe and records probe accuracy. These are **SAGAT-inspired scenario probes**. The current prototype does not implement or claim a complete validated SAGAT freeze/probe protocol.
+
+## Experimental-design limitations
+
+The present software is a research prototype rather than a completed human-subject study. Important limitations include:
+
+- scenario order is fixed from low to medium to high load, so load is potentially confounded with trial order, practice, and fatigue;
+- no counterbalancing or randomization is implemented;
+- no sample-size or power analysis is encoded;
+- no inferential statistical analysis is implemented;
+- scenario thresholds and answer keys are authored rather than generated by a validated agronomic/FEW model;
+- no participant demographics, exclusion rules, or missing-data protocol are implemented;
+- no IRB/ethics approval, recruitment, or informed-consent claim is made by this repository;
+- HFE measures require methodological documentation and validation before being used to support empirical research conclusions.
+
+## Current software capabilities
+
+- nine interactive agrivoltaic decision scenarios;
+- low, medium, and high information-load conditions;
+- decision-answer recording and accuracy scoring;
+- browser-based response-time measurement;
+- six workload-rating dimensions and a composite score;
+- scenario-based situational-awareness probes;
+- participant-level results;
+- load-level descriptive summaries;
+- Recharts visualizations;
+- CSV generation; and
+- XLSX export with raw-data and summary worksheets.
+
+## Technology
+
+React 19 · TypeScript · Vite · Recharts · Tailwind CSS · SheetJS/XLSX
+
+## Run locally
+
+```bash
+npm ci
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Production build:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
 ```
+
+## Research-development roadmap
+
+The controlled strengthening sequence for this repository is:
+
+1. research documentation and explicit claim boundaries;
+2. separation of scenario data, research types, measurement logic, and interface components;
+3. explicit provenance metadata for designed stimuli and HFE principles;
+4. reproducible tests and GitHub build verification;
+5. later methodological work on randomization/counterbalancing, protocol documentation, and integration with scientifically supported agrivoltaic/FEW inputs.
+
+## Relationship to integrated FEW decision research
+
+This prototype addresses the **human-decision layer** of coupled agricultural resource management: how operators interpret crop, water, and energy information and make decisions under different interface loads. It is complementary to system-modeling and scenario-analysis research; it is not evidence by itself of a validated physical agrivoltaic model.
+
+## Research integrity
+
+Repository documentation distinguishes implemented software behavior from experimental assumptions and from empirical validation. Synthetic/designed stimuli are not represented as measured data, and prototype metrics are not represented as validated study findings.
