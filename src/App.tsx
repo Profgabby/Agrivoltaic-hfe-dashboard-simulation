@@ -122,7 +122,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
   const handleAnswer = (answer: string) => {
     const selected = scenario.options.find((o) => o.text === answer);
     const isCorrect = answer === scenario.correct;
-    const answeredAt = performance.now();
+    const answeredAt = new Event("hfe-response").timeStamp;
     const rt = ((answeredAt - questionStartTime) / 1000).toFixed(2);
 
     setFeedback({
@@ -170,7 +170,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
     if (current + 1 < scenarios.length) {
       setCurrent(current + 1);
       setStage("decision");
-      setQuestionStartTime(performance.now());
+      setQuestionStartTime(new Event("hfe-decision-start").timeStamp);
     } else {
       setShowResults(true);
     }
@@ -282,7 +282,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
             </div>
           </div>
 
-          <button onClick={() => { setParticipantId(`P-${Math.floor(Math.random() * 9000 + 1000)}`); setQuestionStartTime(performance.now()); setStarted(true); }} className="mt-8 rounded-2xl bg-green-800 px-8 py-4 text-xl font-black text-white shadow-xl transition hover:bg-green-900">Start Simulation</button>
+          <button onClick={() => { setParticipantId(`P-${Math.floor(Math.random() * 9000 + 1000)}`); setQuestionStartTime(new Event("hfe-decision-start").timeStamp); setStarted(true); }} className="mt-8 rounded-2xl bg-green-800 px-8 py-4 text-xl font-black text-white shadow-xl transition hover:bg-green-900">Start Simulation</button>
         </div>
       </div>
     );
