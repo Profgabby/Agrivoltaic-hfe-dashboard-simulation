@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import * as XLSX from "xlsx";
 import {
 
@@ -19,7 +19,7 @@ import {
   YAxis,
 } from "recharts";
 
-import type { LoadLevel, ResponseRow, Stage, Status, TlxState } from "./research/types";
+import type { LoadLevel, ResponseRow, Scenario, Stage, Status, TlxState } from "./research/types";
 import { scenarios } from "./data/scenarios";
 import { computeWorkloadComposite, summarizeByLoad } from "./research/measures";
 
@@ -47,22 +47,73 @@ const statusPanel: Record<Status, string> = {
   Critical: "border-red-300 bg-red-50 text-red-950",
 };
 
+const KpiCard = ({ label, value, detail, accent }: { label: string; value: string; detail: string; accent: string }) => (
+  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="flex items-center justify-between">
+      <p className="text-sm font-semibold text-slate-500">{label}</p>
+      <span className="h-3 w-3 rounded-full" style={{ background: accent }} />
+    </div>
+    <p className="mt-2 text-3xl font-black text-slate-950">{value}</p>
+    <p className="mt-1 text-sm text-slate-500">{detail}</p>
+  </div>
+);
+
+const Slider = ({ label, value, onChange, low = "Low", high = "High" }: { label: string; value: number; onChange: (v: number) => void; low?: string; high?: string }) => (
+  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mb-2 flex justify-between font-bold text-slate-800"><span>{label}</span><span>{value}</span></div>
+    <input className="w-full accent-green-700" type="range" min="1" max="10" value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    <div className="mt-1 flex justify-between text-xs text-slate-500"><span>{low}</span><span>{high}</span></div>
+  </div>
+);
+
+const TrendChart = ({ data }: { data: Scenario["trendData"] }) => (
+  <div className="h-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mb-3 flex items-center justify-between">
+      <div>
+        <h3 className="font-black text-slate-900">Live System Trends</h3>
+        <p className="text-xs text-slate-500">Moisture, crop heat, solar energy, and stress over time</p>
+      </div>
+      <div className="hidden gap-3 text-xs font-semibold text-slate-600 md:flex">
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-700" />Moisture</span>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-700" />Temp</span>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-700" />Solar</span>
+      </div>
+    </div>
+    <ResponsiveContainer width="100%" height="82%">
+      <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+        <XAxis dataKey="time" tick={{ fontSize: 12 }} />
+        <YAxis tick={{ fontSize: 12 }} />
+        <Tooltip />
+        <Line type="monotone" dataKey="moisture" name="Soil moisture" stroke={COLORS.green2} strokeWidth={3} dot={false} />
+        <Line type="monotone" dataKey="temp" name="Crop temperature" stroke={COLORS.red} strokeWidth={3} dot={false} />
+        <Line type="monotone" dataKey="solar" name="Solar output" stroke={COLORS.blue} strokeWidth={3} dot={false} />
+        <Line type="monotone" dataKey="stress" name="Crop stress" stroke={COLORS.purple} strokeWidth={3} dot={false} />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+);
+
+const MiniGauge = ({ label, value, color }: { label: string; value: number; color: string }) => (
+  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mb-2 flex items-center justify-between"><span className="text-sm font-bold text-slate-700">{label}</span><span className="text-sm font-black">{value}%</span></div>
+    <div className="h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${value}%`, background: color }} /></div>
+  </div>
+);
+
+
 export default function AgrivoltaicHFESimulationProfessional() {
-  const participantId = useMemo(() => `P-${Math.floor(Math.random() * 9000 + 1000)}`, []);
+  const [participantId, setParticipantId] = useState("P-pending");
   const [started, setStarted] = useState(false);
   const [current, setCurrent] = useState(0);
   const [stage, setStage] = useState<Stage>("decision");
-  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const [questionStartTime, setQuestionStartTime] = useState(0);
   const [responses, setResponses] = useState<ResponseRow[]>([]);
   const [feedback, setFeedback] = useState<ResponseRow | null>(null);
   const [tlx, setTlx] = useState<TlxState>({ Mental: 5, Physical: 1, Temporal: 5, Performance: 5, Effort: 5, Frustration: 5 });
   const [sagatSelection, setSagatSelection] = useState("");
   const [showResults, setShowResults] = useState(false);
   const [csvText, setCsvText] = useState("");
-
-  useEffect(() => {
-    if (started && stage === "decision") setQuestionStartTime(Date.now());
-  }, [started, current, stage]);
 
   const scenario = scenarios[current];
 
@@ -118,6 +169,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
     if (current + 1 < scenarios.length) {
       setCurrent(current + 1);
       setStage("decision");
+      setQuestionStartTime(Date.now());
     } else {
       setShowResults(true);
     }
@@ -186,61 +238,9 @@ export default function AgrivoltaicHFESimulationProfessional() {
     setSagatSelection("");
     setCsvText("");
     setShowResults(false);
+    setParticipantId("P-pending");
+    setQuestionStartTime(0);
   };
-
-  const KpiCard = ({ label, value, detail, accent }: { label: string; value: string; detail: string; accent: string }) => (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-500">{label}</p>
-        <span className="h-3 w-3 rounded-full" style={{ background: accent }} />
-      </div>
-      <p className="mt-2 text-3xl font-black text-slate-950">{value}</p>
-      <p className="mt-1 text-sm text-slate-500">{detail}</p>
-    </div>
-  );
-
-  const Slider = ({ label, value, onChange, low = "Low", high = "High" }: { label: string; value: number; onChange: (v: number) => void; low?: string; high?: string }) => (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-2 flex justify-between font-bold text-slate-800"><span>{label}</span><span>{value}</span></div>
-      <input className="w-full accent-green-700" type="range" min="1" max="10" value={value} onChange={(e) => onChange(Number(e.target.value))} />
-      <div className="mt-1 flex justify-between text-xs text-slate-500"><span>{low}</span><span>{high}</span></div>
-    </div>
-  );
-
-  const TrendChart = ({ data }: { data: Scenario["trendData"] }) => (
-    <div className="h-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h3 className="font-black text-slate-900">Live System Trends</h3>
-          <p className="text-xs text-slate-500">Moisture, crop heat, solar energy, and stress over time</p>
-        </div>
-        <div className="hidden gap-3 text-xs font-semibold text-slate-600 md:flex">
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-700" />Moisture</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-700" />Temp</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-700" />Solar</span>
-        </div>
-      </div>
-      <ResponsiveContainer width="100%" height="82%">
-        <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-          <XAxis dataKey="time" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
-          <Line type="monotone" dataKey="moisture" name="Soil moisture" stroke={COLORS.green2} strokeWidth={3} dot={false} />
-          <Line type="monotone" dataKey="temp" name="Crop temperature" stroke={COLORS.red} strokeWidth={3} dot={false} />
-          <Line type="monotone" dataKey="solar" name="Solar output" stroke={COLORS.blue} strokeWidth={3} dot={false} />
-          <Line type="monotone" dataKey="stress" name="Crop stress" stroke={COLORS.purple} strokeWidth={3} dot={false} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-
-  const MiniGauge = ({ label, value, color }: { label: string; value: number; color: string }) => (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-2 flex items-center justify-between"><span className="text-sm font-bold text-slate-700">{label}</span><span className="text-sm font-black">{value}%</span></div>
-      <div className="h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${value}%`, background: color }} /></div>
-    </div>
-  );
 
   if (!started) {
     return (
@@ -251,7 +251,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
               <div>
                 <p className="mb-3 text-sm font-bold uppercase tracking-[0.3em] text-green-300">Agrivoltaic HFE Lab</p>
                 <h1 className="max-w-4xl text-4xl font-black leading-tight md:text-6xl">Professional Dashboard Simulation for Smart Agrivoltaic Decision Support</h1>
-                <p className="mt-5 max-w-3xl text-lg text-slate-300">A research-grade interface prototype that measures decision accuracy, NASA-TLX workload, SAGAT situational awareness, and response time under low, medium, and high dashboard complexity.</p>
+                <p className="mt-5 max-w-3xl text-lg text-slate-300">A research-grade interface prototype that measures decision accuracy, prototype workload, SAGAT situational awareness, and response time under low, medium, and high dashboard complexity.</p>
               </div>
               <div className="rounded-3xl border border-green-400/30 bg-green-400/10 p-6 text-center">
                 <p className="text-sm text-green-200">Participant</p>
@@ -262,7 +262,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
 
           <div className="grid gap-5 md:grid-cols-3">
             <KpiCard label="Experimental Variable" value="3 Loads" detail="Low, Medium, High dashboard complexity" accent={COLORS.green} />
-            <KpiCard label="Human Factors Measures" value="4 Metrics" detail="Accuracy, TLX, SAGAT, response time" accent={COLORS.blue} />
+            <KpiCard label="Human Factors Measures" value="4 Metrics" detail="Accuracy, workload, SA probes, response time" accent={COLORS.blue} />
             <KpiCard label="Export Format" value="XLSX" detail="Raw data and summary statistics" accent={COLORS.purple} />
           </div>
 
@@ -281,7 +281,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
             </div>
           </div>
 
-          <button onClick={() => setStarted(true)} className="mt-8 rounded-2xl bg-green-800 px-8 py-4 text-xl font-black text-white shadow-xl transition hover:bg-green-900">Start Simulation</button>
+          <button onClick={() => { setParticipantId(`P-${Math.floor(Math.random() * 9000 + 1000)}`); setQuestionStartTime(Date.now()); setStarted(true); }} className="mt-8 rounded-2xl bg-green-800 px-8 py-4 text-xl font-black text-white shadow-xl transition hover:bg-green-900">Start Simulation</button>
         </div>
       </div>
     );
@@ -310,13 +310,13 @@ export default function AgrivoltaicHFESimulationProfessional() {
           <div className="grid gap-5 md:grid-cols-4">
             <KpiCard label="Decision Accuracy" value={`${Math.round((totalCorrect / responses.length) * 100)}%`} detail={`${totalCorrect}/${responses.length} correct`} accent={COLORS.green2} />
             <KpiCard label="SA Probe Accuracy" value={`${Math.round((totalSagat / responses.length) * 100)}%`} detail="Situational awareness score" accent={COLORS.blue} />
-            <KpiCard label="Average TLX" value={`${avgTlx}/10`} detail="Perceived workload" accent={COLORS.orange} />
+            <KpiCard label="Average workload" value={`${avgTlx}/10`} detail="Perceived workload" accent={COLORS.orange} />
             <KpiCard label="Avg Response Time" value={`${avgRt}s`} detail="Decision speed" accent={COLORS.purple} />
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-3">
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
-              <h2 className="mb-4 text-2xl font-black text-slate-950">Decision Accuracy and SAGAT by Load</h2>
+              <h2 className="mb-4 text-2xl font-black text-slate-950">Decision Accuracy and SA Probe Accuracy by Load</h2>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={summaryData}>
@@ -325,7 +325,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
                     <YAxis domain={[0, 100]} />
                     <Tooltip />
                     <Bar dataKey="decisionPct" name="Decision accuracy %" fill={COLORS.green2} radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="sagatPct" name="SAGAT accuracy %" fill={COLORS.blue} radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="sagatPct" name="SA probe accuracy %" fill={COLORS.blue} radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -354,7 +354,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
                   <XAxis dataKey="load" />
                   <YAxis />
                   <Tooltip />
-                  <Area type="monotone" dataKey="avgTlx" name="Average TLX" stroke={COLORS.orange} fill="#FFE0B2" strokeWidth={3} />
+                  <Area type="monotone" dataKey="avgTlx" name="Average workload" stroke={COLORS.orange} fill="#FFE0B2" strokeWidth={3} />
                   <Area type="monotone" dataKey="avgRt" name="Average response time" stroke={COLORS.purple} fill="#E1BEE7" strokeWidth={3} />
                 </AreaChart>
               </ResponsiveContainer>
