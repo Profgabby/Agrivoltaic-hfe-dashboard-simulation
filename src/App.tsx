@@ -28,7 +28,7 @@ const COLORS = {
   green2: "#2E7D32",
   red: "#C62828",
   orange: "#EF6C00",
-  blue: "#1565C0",
+  blue: "#475569",
   purple: "#6A1B9A",
   slate: "#0F172A",
 };
@@ -70,7 +70,7 @@ const TrendChart = ({ data }: { data: Scenario["trendData"] }) => (
   <div className="h-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
     <div className="mb-3 flex items-center justify-between">
       <div>
-        <h3 className="font-black text-slate-900">Live System Trends</h3>
+        <h3 className="font-black text-slate-900">Scenario System Trends</h3>
         <p className="text-xs text-slate-500">Moisture, crop heat, solar energy, and stress over time</p>
       </div>
       <div className="hidden gap-3 text-xs font-semibold text-slate-600 md:flex">
@@ -252,7 +252,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
               <div>
                 <p className="mb-3 text-sm font-bold uppercase tracking-[0.3em] text-green-300">Agrivoltaic HFE Lab</p>
                 <h1 className="max-w-4xl text-4xl font-black leading-tight md:text-6xl">Professional Dashboard Simulation for Smart Agrivoltaic Decision Support</h1>
-                <p className="mt-5 max-w-3xl text-lg text-slate-300">A research-grade interface prototype that measures decision accuracy, prototype workload, SAGAT situational awareness, and response time under low, medium, and high dashboard complexity.</p>
+                <p className="mt-5 max-w-3xl text-lg text-slate-300">A research decision-support prototype for studying how people interpret coupled crop, water, and energy conditions. Scenario values are designed experimental stimuli rather than live field measurements.</p>
               </div>
               <div className="rounded-3xl border border-green-400/30 bg-green-400/10 p-6 text-center">
                 <p className="text-sm text-green-200">Participant</p>
@@ -282,7 +282,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
             </div>
           </div>
 
-          <button onClick={() => { setParticipantId(`P-${Math.floor(Math.random() * 9000 + 1000)}`); setQuestionStartTime(new Event("hfe-decision-start").timeStamp); setStarted(true); }} className="mt-8 rounded-2xl bg-green-800 px-8 py-4 text-xl font-black text-white shadow-xl transition hover:bg-green-900">Start Simulation</button>
+          <button onClick={() => { setParticipantId(`P-${Math.floor(Math.random() * 9000 + 1000)}`); setQuestionStartTime(new Event("hfe-decision-start").timeStamp); setStarted(true); }} className="mt-8 rounded-2xl bg-green-800 px-8 py-4 text-xl font-black text-white shadow-xl transition hover:bg-green-900">Start Decision Session</button>
         </div>
       </div>
     );
@@ -366,7 +366,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
             <div className="bg-slate-950 px-6 py-4 text-white"><h2 className="text-xl font-black">Raw Participant Results</h2></div>
             <div className="overflow-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-100 text-slate-700"><tr><th className="p-3 text-left">Scenario</th><th className="p-3 text-left">Load</th><th className="p-3 text-left">Decision</th><th className="p-3 text-left">RT</th><th className="p-3 text-left">TLX</th><th className="p-3 text-left">SAGAT</th><th className="p-3 text-left">Recommendation</th></tr></thead>
+                <thead className="bg-slate-100 text-slate-700"><tr><th className="p-3 text-left">Scenario</th><th className="p-3 text-left">Load</th><th className="p-3 text-left">Decision</th><th className="p-3 text-left">RT</th><th className="p-3 text-left">Workload</th><th className="p-3 text-left">SA Probe</th><th className="p-3 text-left">Recommendation</th></tr></thead>
                 <tbody>{responses.map((r, i) => <tr key={i} className="border-t align-top"><td className="p-3 font-bold">{r.scenarioId}</td><td className="p-3">{r.loadLevel}</td><td className={`p-3 font-black ${r.accuracy === "Correct" ? "text-green-700" : "text-red-700"}`}>{r.accuracy}</td><td className="p-3">{r.responseTimeSeconds}s</td><td className="p-3">{r.tlxScore}/10</td><td className={`p-3 font-black ${r.sagatAccuracy === "Correct" ? "text-green-700" : "text-red-700"}`}>{r.sagatAccuracy}</td><td className="p-3 text-slate-600">{r.recommendation}</td></tr>)}</tbody>
               </table>
             </div>
@@ -376,8 +376,8 @@ export default function AgrivoltaicHFESimulationProfessional() {
             <h2 className="text-2xl font-black text-green-950">Automatic Workload Analysis and Next Steps</h2>
             <ol className="mt-4 list-decimal space-y-2 pl-6 text-lg text-green-950">
               <li>The weakest decision-load condition is <strong>{weakest.load}</strong>. Provide extra training for this dashboard level.</li>
-              <li>If TLX is high, reduce dashboard density by grouping water, crop, and energy variables separately.</li>
-              <li>If SAGAT accuracy is low, improve situation-awareness cues by making the critical subsystem more salient.</li>
+              <li>If the prototype workload score is high, reduce dashboard density by grouping water, crop, and energy variables separately.</li>
+              <li>If situational-awareness probe accuracy is low, improve situation-awareness cues by making the critical subsystem more salient.</li>
               <li>If response time is slow, simplify labels and place alerts close to the recommended action.</li>
               <li>For field use, prioritize irrigation failure and crop stress before solar optimization, report export, or network troubleshooting.</li>
             </ol>
@@ -385,7 +385,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
 
           <div className="mt-6 flex flex-wrap gap-4">
             <button onClick={exportXLSX} className="rounded-2xl bg-green-800 px-6 py-3 font-black text-white shadow-lg hover:bg-green-900">Export XLSX Results</button>
-            <button onClick={showCSV} className="rounded-2xl bg-blue-700 px-6 py-3 font-black text-white shadow-lg hover:bg-blue-800">Copy / Show CSV</button>
+            <button onClick={showCSV} className="rounded-2xl bg-slate-700 px-6 py-3 font-bold text-white shadow-sm hover:bg-slate-800">Copy / Show CSV</button>
             <button onClick={resetSimulation} className="rounded-2xl bg-slate-900 px-6 py-3 font-black text-white shadow-lg hover:bg-slate-950">Restart Simulation</button>
           </div>
           {csvText && <textarea className="mt-6 h-56 w-full rounded-2xl border border-slate-300 p-4 font-mono text-xs" value={csvText} readOnly onFocus={(e) => e.target.select()} />}
@@ -465,7 +465,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
               <h2 className="text-2xl font-black text-slate-950">Decision Task</h2>
               <p className="mt-2 text-lg text-slate-700">{scenario.question}</p>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
-                {scenario.options.map((option) => <button key={option.text} onClick={() => handleAnswer(option.text)} className="rounded-2xl bg-blue-700 p-5 text-left text-lg font-black text-white shadow-lg transition hover:bg-blue-800">{option.text}</button>)}
+                {scenario.options.map((option) => <button key={option.text} onClick={() => handleAnswer(option.text)} className="rounded-2xl border border-slate-300 bg-white p-5 text-left text-lg font-bold text-slate-900 shadow-sm transition hover:border-green-700 hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-700">{option.text}</button>)}
               </div>
             </div>
           </>
@@ -473,18 +473,18 @@ export default function AgrivoltaicHFESimulationProfessional() {
 
         {stage === "feedback" && feedback && (
           <div className={`rounded-3xl border p-8 shadow-sm ${feedback.accuracy === "Correct" ? "border-green-300 bg-green-50" : "border-red-300 bg-red-50"}`}>
-            <p className={`text-sm font-bold uppercase tracking-[0.25em] ${feedback.accuracy === "Correct" ? "text-green-700" : "text-red-700"}`}>Decision Feedback</p>
-            <h2 className={`mt-2 text-4xl font-black ${feedback.accuracy === "Correct" ? "text-green-950" : "text-red-950"}`}>{feedback.accuracy === "Correct" ? "Good Decision" : "Decision Correction Needed"}</h2>
+            <p className={`text-sm font-bold uppercase tracking-[0.25em] ${feedback.accuracy === "Correct" ? "text-green-700" : "text-red-700"}`}>Decision Assessment</p>
+            <h2 className={`mt-2 text-4xl font-black ${feedback.accuracy === "Correct" ? "text-green-950" : "text-red-950"}`}>{feedback.accuracy === "Correct" ? "Decision Consistent with Scenario" : "Review Scenario Decision"}</h2>
             <p className="mt-4 text-lg text-slate-800">{feedback.consequence}</p>
             <p className="mt-3 font-black text-slate-950">Response Time: {feedback.responseTimeSeconds}s</p>
-            <div className="mt-5 rounded-2xl bg-white p-5 shadow-sm"><h3 className="font-black text-slate-950">Recommended Farmer Action</h3><p className="mt-2 text-slate-700">{feedback.recommendation}</p></div>
-            <button onClick={() => setStage("tlx")} className="mt-6 rounded-2xl bg-green-800 px-6 py-3 font-black text-white shadow-lg hover:bg-green-900">Continue to NASA-TLX</button>
+            <div className="mt-5 rounded-2xl bg-white p-5 shadow-sm"><h3 className="font-black text-slate-950">Scenario Action Guidance</h3><p className="mt-2 text-slate-700">{feedback.recommendation}</p></div>
+            <button onClick={() => setStage("tlx")} className="mt-6 rounded-2xl bg-green-800 px-6 py-3 font-black text-white shadow-lg hover:bg-green-900">Continue to Workload Assessment</button>
           </div>
         )}
 
         {stage === "tlx" && (
           <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-            <h2 className="text-3xl font-black text-slate-950">NASA-TLX Workload Rating</h2>
+            <h2 className="text-3xl font-black text-slate-950">Workload Assessment</h2>
             <p className="mt-2 text-slate-600">Rate the workload you experienced on this dashboard task.</p>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <Slider label="Mental Demand" value={tlx.Mental} onChange={(v) => setTlx({ ...tlx, Mental: v })} />
@@ -494,20 +494,20 @@ export default function AgrivoltaicHFESimulationProfessional() {
               <Slider label="Effort" value={tlx.Effort} onChange={(v) => setTlx({ ...tlx, Effort: v })} />
               <Slider label="Frustration" value={tlx.Frustration} onChange={(v) => setTlx({ ...tlx, Frustration: v })} />
             </div>
-            <div className="mt-6 rounded-2xl bg-green-50 p-5 text-xl font-black text-green-950">Computed TLX Score: {getTlxScore(tlx)} / 10</div>
-            <button onClick={submitTlx} className="mt-6 rounded-2xl bg-green-800 px-6 py-3 font-black text-white shadow-lg hover:bg-green-900">Continue to SAGAT Probe</button>
+            <div className="mt-6 rounded-2xl bg-green-50 p-5 text-xl font-black text-green-950">Prototype Workload Score: {getTlxScore(tlx)} / 10</div>
+            <button onClick={submitTlx} className="mt-6 rounded-2xl bg-green-800 px-6 py-3 font-black text-white shadow-lg hover:bg-green-900">Continue to Situational-Awareness Probe</button>
           </div>
         )}
 
         {stage === "sagat" && (
-          <div className="rounded-3xl border border-blue-200 bg-white p-8 shadow-sm">
-            <p className="text-sm font-bold uppercase tracking-[0.25em] text-blue-700">Situation Awareness Probe</p>
-            <h2 className="mt-2 text-3xl font-black text-slate-950">SAGAT Question</h2>
+          <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+            <p className="text-sm font-bold uppercase tracking-[0.25em] text-green-800">Situational-Awareness Probe</p>
+            <h2 className="mt-2 text-3xl font-black text-slate-950">Situational-Awareness Question</h2>
             <p className="mt-3 text-xl text-slate-700">{scenario.sagatQuestion}</p>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {scenario.sagatOptions.map((opt) => <button key={opt} onClick={() => setSagatSelection(opt)} className={`rounded-2xl border-2 p-5 text-left font-black transition ${sagatSelection === opt ? "border-blue-900 bg-blue-700 text-white" : "border-blue-100 bg-blue-50 text-blue-950 hover:border-blue-400"}`}>{opt}</button>)}
+              {scenario.sagatOptions.map((opt) => <button key={opt} onClick={() => setSagatSelection(opt)} className={`rounded-2xl border-2 p-5 text-left font-black transition ${sagatSelection === opt ? "border-green-800 bg-green-800 text-white" : "border-slate-300 bg-white text-slate-900 hover:border-green-700 hover:bg-green-50"}`}>{opt}</button>)}
             </div>
-            <button disabled={!sagatSelection} onClick={submitSagat} className="mt-6 rounded-2xl bg-green-800 px-6 py-3 font-black text-white shadow-lg hover:bg-green-900 disabled:bg-slate-400">Submit SAGAT and Continue</button>
+            <button disabled={!sagatSelection} onClick={submitSagat} className="mt-6 rounded-2xl bg-green-800 px-6 py-3 font-black text-white shadow-lg hover:bg-green-900 disabled:bg-slate-400">Submit Probe and Continue</button>
           </div>
         )}
       </div>
