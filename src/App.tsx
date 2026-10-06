@@ -33,22 +33,6 @@ const COLORS = {
   slate: "#0F172A",
 };
 
-const trend = (
-  moisture: number[],
-  temp: number[],
-  solar: number[],
-  battery: number[],
-  stress: number[]
-) =>
-  ["08:00", "09:00", "10:00", "11:00", "12:00"].map((time, i) => ({
-    time,
-    moisture: moisture[i],
-    temp: temp[i],
-    solar: solar[i],
-    battery: battery[i],
-    stress: stress[i],
-  }));
-
 const statusDot: Record<Status, string> = {
   Normal: "bg-emerald-500",
   Watch: "bg-amber-400",
