@@ -33,22 +33,6 @@ const COLORS = {
   slate: "#0F172A",
 };
 
-const trend = (
-  moisture: number[],
-  temp: number[],
-  solar: number[],
-  battery: number[],
-  stress: number[]
-) =>
-  ["08:00", "09:00", "10:00", "11:00", "12:00"].map((time, i) => ({
-    time,
-    moisture: moisture[i],
-    temp: temp[i],
-    solar: solar[i],
-    battery: battery[i],
-    stress: stress[i],
-  }));
-
 const statusDot: Record<Status, string> = {
   Normal: "bg-emerald-500",
   Watch: "bg-amber-400",
@@ -139,10 +123,12 @@ export default function AgrivoltaicHFESimulationProfessional() {
     }
   };
 
-  const summaryByLoad = (load: LoadLevel) => summarizeByLoad(responses, load);\n\n  const summaryData = [summaryByLoad("Low"), summaryByLoad("Medium"), summaryByLoad("High")];
+  const summaryByLoad = (load: LoadLevel) => summarizeByLoad(responses, load);
+
+  const summaryData = [summaryByLoad("Low"), summaryByLoad("Medium"), summaryByLoad("High")];
 
   const buildCSV = (rows = responses) => {
-    const headers = ["Participant", "Scenario", "Load", "Principle", "Decision Accuracy", "Response Time Seconds", "Selected Answer", "Correct Answer", "NASA TLX Score", "SAGAT Accuracy", "SAGAT Selected", "SAGAT Correct", "Recommendation", "Timestamp"];
+    const headers = ["Participant", "Scenario", "Load", "Principle", "Decision Accuracy", "Response Time Seconds", "Selected Answer", "Correct Answer", "Prototype Workload Score", "SA Probe Accuracy", "SA Probe Selected", "SA Probe Correct", "Recommendation", "Timestamp"];
     const dataRows = rows.map((r) => [r.participant, r.scenarioId, r.loadLevel, r.principle, r.accuracy, r.responseTimeSeconds, r.selectedAnswer, r.correctAnswer, r.tlxScore, r.sagatAccuracy, r.sagatSelected, r.sagatCorrectAnswer, r.recommendation, r.timestamp]);
     return [headers, ...dataRows].map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   };
@@ -323,7 +309,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
 
           <div className="grid gap-5 md:grid-cols-4">
             <KpiCard label="Decision Accuracy" value={`${Math.round((totalCorrect / responses.length) * 100)}%`} detail={`${totalCorrect}/${responses.length} correct`} accent={COLORS.green2} />
-            <KpiCard label="SAGAT Accuracy" value={`${Math.round((totalSagat / responses.length) * 100)}%`} detail="Situational awareness score" accent={COLORS.blue} />
+            <KpiCard label="SA Probe Accuracy" value={`${Math.round((totalSagat / responses.length) * 100)}%`} detail="Situational awareness score" accent={COLORS.blue} />
             <KpiCard label="Average TLX" value={`${avgTlx}/10`} detail="Perceived workload" accent={COLORS.orange} />
             <KpiCard label="Avg Response Time" value={`${avgRt}s`} detail="Decision speed" accent={COLORS.purple} />
           </div>
