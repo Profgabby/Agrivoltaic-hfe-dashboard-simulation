@@ -71,7 +71,7 @@ const TrendChart = ({ data }: { data: Scenario["trendData"] }) => (
     <div className="mb-3 flex items-center justify-between">
       <div>
         <h3 className="font-black text-slate-900">Scenario System Trends</h3>
-        <p className="text-xs text-slate-500">Moisture, crop heat, solar energy, and stress over time</p>
+        <p className="text-xs text-slate-500">Authored experimental stimuli · mixed units; interpret each series separately</p>
       </div>
       <div className="hidden gap-3 text-xs font-semibold text-slate-600 md:flex">
         <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-700" />Moisture</span>
@@ -83,12 +83,12 @@ const TrendChart = ({ data }: { data: Scenario["trendData"] }) => (
       <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
         <XAxis dataKey="time" tick={{ fontSize: 12 }} />
-        <YAxis tick={{ fontSize: 12 }} />
+        <YAxis tick={{ fontSize: 12 }} label={{ value: "Displayed stimulus values (mixed units)", angle: -90, position: "insideLeft", style: { fontSize: 10 } }} />
         <Tooltip />
-        <Line type="monotone" dataKey="moisture" name="Soil moisture" stroke={COLORS.green2} strokeWidth={3} dot={false} />
-        <Line type="monotone" dataKey="temp" name="Crop temperature" stroke={COLORS.red} strokeWidth={3} dot={false} />
-        <Line type="monotone" dataKey="solar" name="Solar output" stroke={COLORS.blue} strokeWidth={3} dot={false} />
-        <Line type="monotone" dataKey="stress" name="Crop stress" stroke={COLORS.purple} strokeWidth={3} dot={false} />
+        <Line type="monotone" dataKey="moisture" name="Soil moisture (%)" stroke={COLORS.green2} strokeWidth={3} dot={false} />
+        <Line type="monotone" dataKey="temp" name="Crop temperature (°C)" stroke={COLORS.red} strokeWidth={3} dot={false} />
+        <Line type="monotone" dataKey="solar" name="Solar output (%)" stroke={COLORS.blue} strokeWidth={3} dot={false} />
+        <Line type="monotone" dataKey="stress" name="Crop stress (index)" stroke={COLORS.purple} strokeWidth={3} dot={false} />
       </LineChart>
     </ResponsiveContainer>
   </div>
@@ -485,7 +485,7 @@ export default function AgrivoltaicHFESimulationProfessional() {
         {stage === "tlx" && (
           <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
             <h2 className="text-3xl font-black text-slate-950">Workload Assessment</h2>
-            <p className="mt-2 text-slate-600">Rate the workload you experienced on this dashboard task.</p>
+            <p className="mt-2 text-slate-600">Rate the workload you experienced on this dashboard task. NASA-TLX-inspired, six 1–10 ratings with an unweighted composite; not the standard NASA-TLX instrument.</p>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <Slider label="Mental Demand" value={tlx.Mental} onChange={(v) => setTlx({ ...tlx, Mental: v })} />
               <Slider label="Physical Demand" value={tlx.Physical} onChange={(v) => setTlx({ ...tlx, Physical: v })} />
